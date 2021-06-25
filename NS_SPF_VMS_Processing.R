@@ -36,7 +36,7 @@ mesh.sizes <- c("below_32mm", "32mm_plus")
 ## and we are going to have two mesh size categories, above and below 100mm
 
 data(europa)  ## load the coastline data from vmstools
-pdf(file = paste(folder.path, "Cod_Maps.pdf", sep = ""))
+pdf(file = paste(folder.path, "NS_Pelagic_Maps.pdf", sep = ""))
 
 ##  In the UK data we have the following gear codes
 ## "OTB" "OTT" "GNS" "FPO" "OTM" "PTM" "TBN" "PTB" "LX"  "TB"  "GNC"
