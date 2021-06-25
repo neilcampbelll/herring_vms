@@ -22,6 +22,8 @@ rm(list=ls())
 folder.path <- "C:/Work/Herring_VMS/"
 
 ## required libraries
+library(devtools)
+install_github("nielshintzen/vmstools/vmstools/")
 library(raster)
 library(vmstools) #- download from www.vmstools.org
 library(sp)
