@@ -35,8 +35,8 @@ data(europa)  ## load the coastline data from vmstools
 
 ### Declarations
    country <- "UK" # obviously you will change this
-     years <- c(2014, 2015, 2016, 2017, 2018)  ## using these for now - 2015-20 when we do it for real
-gear.codes <- c("OTM","PTM","PS")
+     years <- c(2015:2020)  ## these are the years for which we have data for all relevant countries
+gear.codes <- c("OTM","PTM","PS") ## these are the gears relevant for UK vessels - you may need to modify
 study.area <- c("27.3.a", "27.4.a", "27.4.b", "27.4.c")
 mesh.sizes <- c("below_32mm", "32mm_plus")
 
@@ -81,7 +81,10 @@ for(i in 1:length(years)){
     tacsat.large$SI_STATE <- 0
     tacsat.large$SI_STATE[tacsat.large$SI_SP>=1 & tacsat.large$SI_SP <= 5] <- 1
             
-    ### ditch VMS data where there isn't a corresponding landing of herring
+   ## Genoveva/Patrik - if you are using haul by haul logbooks instead of speed, you will need to change this
+   ## to something more appropriate
+   
+    ### lose the VMS data where there isn't a corresponding landing of herring
     tacsat.small <- tacsat.small[tacsat.small$FT_REF != 0,]
     tacsat.large <- tacsat.large[tacsat.large$FT_REF != 0,]
 
