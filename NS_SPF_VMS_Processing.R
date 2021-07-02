@@ -241,7 +241,7 @@ for(i in 1:length(years)){
           plot(europa, ylim=c(48, 62), xlim=c(-4, 12), col="grey70", asp=1.5)
           box()
           plot(nop.raster, add = T)
-          title(main = paste("Norway poit, ", month.name[l], " ", years[i], sep=""), sub = "Under 32mm Mesh Gears")
+          title(main = paste("Norway pout, ", month.name[l], " ", years[i], sep=""), sub = "Under 32mm Mesh Gears")
           writeRaster(nop.raster, paste(folder.path, "/results/Norway_pout_", country, "_", month.name[l], "_" ,years[i], "_under32mm ", sep=""), overwrite = TRUE, format = "raster")
         }
       }
