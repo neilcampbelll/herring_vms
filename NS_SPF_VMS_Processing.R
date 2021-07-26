@@ -75,11 +75,11 @@ for(i in 1:length(years)){
 
     ### assign activity for the small mesh gears
     tacsat.small$SI_STATE <- 0
-    tacsat.small$SI_STATE[tacsat.small$SI_SP>=1 & tacsat.small$SI_SP <= 5] <- 1
+    tacsat.small$SI_STATE[tacsat.small$SI_SP>=1 & tacsat.small$SI_SP <= 6] <- 1
 
     ### and for the large mesh ones
     tacsat.large$SI_STATE <- 0
-    tacsat.large$SI_STATE[tacsat.large$SI_SP>=1 & tacsat.large$SI_SP <= 5] <- 1
+    tacsat.large$SI_STATE[tacsat.large$SI_SP>=1 & tacsat.large$SI_SP <= 6] <- 1
             
    ## Genoveva/Patrik - if you are using haul by haul logbooks instead of speed, you will need to change this
    ## to something more appropriate
@@ -162,7 +162,7 @@ for(i in 1:length(years)){
 
     ### assign activity for the small mesh gears
     tacsat.small$SI_STATE <- 0
-    tacsat.small$SI_STATE[tacsat.small$SI_SP>=1 & tacsat.small$SI_SP <= 5] <- 1
+    tacsat.small$SI_STATE[tacsat.small$SI_SP>=1 & tacsat.small$SI_SP <= 6] <- 1
     
     ### ditch VMS data where there isn't a corresponding landing of herring
     tacsat.small <- tacsat.small[tacsat.small$FT_REF != 0,]
@@ -214,7 +214,7 @@ for(i in 1:length(years)){
     
     ### assign activity for the small mesh gears
     tacsat.small$SI_STATE <- 0
-    tacsat.small$SI_STATE[tacsat.small$SI_SP>=1 & tacsat.small$SI_SP <= 5] <- 1
+    tacsat.small$SI_STATE[tacsat.small$SI_SP>=1 & tacsat.small$SI_SP <= 6] <- 1
     
     ### ditch VMS data where there isn't a corresponding landing of herring
     tacsat.small <- tacsat.small[tacsat.small$FT_REF != 0,]
