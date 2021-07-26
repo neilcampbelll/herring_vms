@@ -90,7 +90,7 @@ for(i in 1:length(years)){
 
     ### IF there are some landings to dispatch for small mesh gears, do so
     if(dim(tacsat.small)[1]>0){  ## if we have some data, dispatch it to pings
-      tacsat.her.small.sub <- splitAmongPings(tacsat.small, temp.eflalo.small, variable="kgs")
+      tacsat.her.small.sub <- splitAmongPings(tacsat.small, temp.eflalo.small, variable="kgs", by=”INTV”)
       tacsat.her.small.sub$LE_KG_HER[is.na(tacsat.her.small.sub$LE_KG_HER)] <- 0      
       tacsat.her.small.sub$MONTH <- as.numeric(substr(tacsat.her.small.sub$SI_DATE, 4, 5))
       
@@ -118,7 +118,7 @@ for(i in 1:length(years)){
     
     ### now we do the same for the gears with cod ends greater than or equal to 32mm
     if(dim(tacsat.large)[1]>0){  ## if we have some data, dispatch it to pings
-      tacsat.her.large.sub <- splitAmongPings(tacsat.large, temp.eflalo.large, variable="kgs")
+      tacsat.her.large.sub <- splitAmongPings(tacsat.large, temp.eflalo.large, variable="kgs", by=”INTV”)
       tacsat.her.large.sub$LE_KG_HER[is.na(tacsat.her.large.sub$LE_KG_HER)] <- 0      
       tacsat.her.large.sub$MONTH <- as.numeric(substr(tacsat.her.large.sub$SI_DATE, 4, 5))
       
@@ -169,7 +169,7 @@ for(i in 1:length(years)){
 
     ### IF there are some landings to dispatch
     if(dim(tacsat.small)[1]>0){  ## if we have some data, dispatch it to pings
-      tacsat.spr.small.sub <- splitAmongPings(tacsat.small, temp.eflalo.small, variable="kgs")
+      tacsat.spr.small.sub <- splitAmongPings(tacsat.small, temp.eflalo.small, variable="kgs", by=”INTV”)
       tacsat.spr.small.sub$LE_KG_SPR[is.na(tacsat.spr.small.sub$LE_KG_SPR)] <- 0      
       tacsat.spr.small.sub$MONTH <- as.numeric(substr(tacsat.spr.small.sub$SI_DATE, 4, 5))
       
@@ -221,7 +221,7 @@ for(i in 1:length(years)){
     
     ### IF there are some landings to dispatch
     if(dim(tacsat.small)[1]>0){  ## if we have some data, dispatch it to pings
-      tacsat.nop.small.sub <- splitAmongPings(tacsat.small, temp.eflalo.small, variable="kgs")
+      tacsat.nop.small.sub <- splitAmongPings(tacsat.small, temp.eflalo.small, variable="kgs", by=”INTV”)
       tacsat.nop.small.sub$LE_KG_nop[is.na(tacsat.nop.small.sub$LE_KG_NOP)] <- 0      
       tacsat.nop.small.sub$MONTH <- as.numeric(substr(tacsat.nop.small.sub$SI_DATE, 4, 5))
       
