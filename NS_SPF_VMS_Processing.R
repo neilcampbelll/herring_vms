@@ -40,6 +40,8 @@ gear.codes <- c("OTM","PTM","PS") ## these are the gears relevant for UK vessels
 study.area <- c("27.3.a", "27.4.a", "27.4.b", "27.4.c")
 mesh.sizes <- c("below_32mm", "32mm_plus")
 
+table.her <- table.spr <- table.nop <- matrix(nrow=length(years), ncol=length(gear.codes), dimnames = list(years, gear.codes))
+
 
 pdf(file = paste(folder.path, "NS_Pelagic_Maps.pdf", sep = ""))
 
