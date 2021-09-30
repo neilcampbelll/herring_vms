@@ -34,17 +34,16 @@ data(europa)  ## load the coastline data from vmstools
 
 
 ### Declarations
-   country <- "UK" # obviously you will change this
-     years <- c(2015:2020)  ## these are the years for which we have data for all relevant countries
-gear.codes <- c("OTM","PTM","PS") ## these are the gears relevant for UK vessels - you may need to modify
+country <- "UK" # obviously you will change this
+years <- c(2014, 2015, 2016, 2017, 2018)  ## using these for now - 2015-20 when we do it for real
+gear.codes <- c("OTM","PTM","PS")
 study.area <- c("27.3.a", "27.4.a", "27.4.b", "27.4.c")
 mesh.sizes <- c("below_32mm", "32mm_plus")
 
-table.her <- table.spr <- table.nop <- matrix(nrow=length(years), ncol=length(gear.codes), dimnames = list(years, gear.codes))
-
+table.her.l <- table.her.s <- table.spr <- table.nop <- matrix(nrow=length(years), 
+                       ncol=length(gear.codes), dimnames = list(years, gear.codes))
 
 pdf(file = paste(folder.path, "NS_Pelagic_Maps.pdf", sep = ""))
-
 
 ### For each year...
 for(i in 1:length(years)){
@@ -52,200 +51,221 @@ for(i in 1:length(years)){
   ### load in the EFLALO and TACSAT data
   load(paste(folder.path, "data/cleanEflalo", years[i], ".Rdata", sep = ""))
   load(paste(folder.path, "data/cleanTacsat", years[i], ".Rdata", sep = ""))
-
-    ### subset it to have just the columns for Herring catch weight and value
-    temp.eflalo <- eflalo[,colnames(eflalo) %in% c("LE_ID","VE_REF","YR", "VE_FLT", 
-                    "VE_COU", "VE_LEN", "VE_KW", "VE_TON", "FT_REF", "FT_DCOU", "FT_DHAR", 
-                    "FT_DDAT", "FT_DTIME", "FT_LCOU", "FT_LDAT", "FT_LTIME", "LE_CDAT", "LE_GEAR",
-                    "LE_DIV", "LE_RECT",  "LE_MSZ", "LE_KG_HER", "LE_EURO_HER")]
+  
+  ### subset it to have just the columns for Herring catch weight and value
+  temp.eflalo <- eflalo[,colnames(eflalo) %in% c("LE_ID","VE_REF","YR", "VE_FLT", 
+                                                 "VE_COU", "VE_LEN", "VE_KW", "VE_TON", "FT_REF", "FT_DCOU", "FT_DHAR", 
+                                                 "FT_DDAT", "FT_DTIME", "FT_LCOU", "FT_LDAT", "FT_LTIME", "LE_CDAT", "LE_GEAR",
+                                                 "LE_DIV", "LE_RECT",  "LE_MSZ", "LE_KG_HER", "LE_EURO_HER")]
+  
+  ### subset again to be just the rows where there is a landing of herring, using the correct gear code
+  ### within the area we are interested in, using a small mesh gear
+  temp.eflalo.small <- temp.eflalo[temp.eflalo[dim(temp.eflalo)[2]-1]  > 0 & temp.eflalo$LE_GEAR %in% gear.codes & 
+                                     temp.eflalo$LE_DIV %in% study.area &
+                                     temp.eflalo$LE_MSZ <32,]
+  
+  ### and as above, by with mesh sizes greater or equal to 32mm
+  temp.eflalo.large <- temp.eflalo[temp.eflalo[dim(temp.eflalo)[2]-1]  > 0 & temp.eflalo$LE_GEAR %in% gear.codes & 
+                                     temp.eflalo$LE_DIV %in% study.area &
+                                     temp.eflalo$LE_MSZ >=32,]
+  
+  for(k in 1:length(gear.codes)){
+  table.her.l[i,k] <- sum(temp.eflalo.large$LE_KG_HER[temp.eflalo.large$LE_GEAR == gear.codes[k]], na.rm=T)/1000
+  table.her.s[i,k] <- sum(temp.eflalo.small$LE_KG[temp.eflalo$LE_GEAR == gear.codes[k]], na.rm=T)  /1000
+  }
+  
+  ###  merge these with the tacsat data
+  tacsat.small <-mergeEflalo2Tacsat(temp.eflalo.small, tacsat)
+  tacsat.large <-mergeEflalo2Tacsat(temp.eflalo.large, tacsat)
+  
+  
+  ### assign activity for the small mesh gears
+  tacsat.small$SI_STATE <- 0
+  tacsat.small$SI_STATE[tacsat.small$SI_SP>=1 & tacsat.small$SI_SP <= 6] <- 1
+  
+  ### and for the large mesh ones
+  tacsat.large$SI_STATE <- 0
+  tacsat.large$SI_STATE[tacsat.large$SI_SP>=1 & tacsat.large$SI_SP <= 6] <- 1
+  
+  ### ditch VMS data where there isn't a corresponding landing of herring
+  tacsat.small <- tacsat.small[tacsat.small$FT_REF != 0,]
+  tacsat.large <- tacsat.large[tacsat.large$FT_REF != 0,]
+  
+  ### IF there are some landings to dispatch for small mesh gears, do so
+  if(dim(tacsat.small)[1]>0){  ## if we have some data, dispatch it to pings
+    tacsat.her.small.sub <- splitAmongPings(tacsat.small, temp.eflalo.small, variable="kgs")
+    tacsat.her.small.sub$LE_KG_HER[is.na(tacsat.her.small.sub$LE_KG_HER)] <- 0      
+    tacsat.her.small.sub$MONTH <- as.numeric(substr(tacsat.her.small.sub$SI_DATE, 4, 5))
     
-    ### subset again to be just the rows where there is a landing of herring, using the correct gear code
-    ### within the area we are interested in, using a small mesh gear
-    temp.eflalo.small <- temp.eflalo[temp.eflalo[dim(temp.eflalo)[2]-1]  > 0 & temp.eflalo$LE_GEAR %in% gear.codes & 
-                                       temp.eflalo$LE_DIV %in% study.area &
-                                       temp.eflalo$LE_MSZ <32,]
     
-    ### and as above, by with mesh sizes greater or equal to 32mm
-    temp.eflalo.large <- temp.eflalo[temp.eflalo[dim(temp.eflalo)[2]-1]  > 0 & temp.eflalo$LE_GEAR %in% gear.codes & 
-                                       temp.eflalo$LE_DIV %in% study.area &
-                                       temp.eflalo$LE_MSZ >=32,]
     
-    ###  merge these with the tacsat data
-    tacsat.small <-mergeEflalo2Tacsat(temp.eflalo.small, tacsat)
-    tacsat.large <-mergeEflalo2Tacsat(temp.eflalo.large, tacsat)
-    
-
-    ### assign activity for the small mesh gears
-    tacsat.small$SI_STATE <- 0
-    tacsat.small$SI_STATE[tacsat.small$SI_SP>=1 & tacsat.small$SI_SP <= 6] <- 1
-
-    ### and for the large mesh ones
-    tacsat.large$SI_STATE <- 0
-    tacsat.large$SI_STATE[tacsat.large$SI_SP>=1 & tacsat.large$SI_SP <= 6] <- 1
-            
-   ## Genoveva/Patrik - if you are using haul by haul logbooks instead of speed, you will need to change this
-   ## to something more appropriate
-   
-    ### lose the VMS data where there isn't a corresponding landing of herring
-    tacsat.small <- tacsat.small[tacsat.small$FT_REF != 0,]
-    tacsat.large <- tacsat.large[tacsat.large$FT_REF != 0,]
-
-    ### IF there are some landings to dispatch for small mesh gears, do so
-    if(dim(tacsat.small)[1]>0){  ## if we have some data, dispatch it to pings
-      tacsat.her.small.sub <- splitAmongPings(tacsat.small, temp.eflalo.small, variable="kgs", by=”INTV”)
-      tacsat.her.small.sub$LE_KG_HER[is.na(tacsat.her.small.sub$LE_KG_HER)] <- 0      
-      tacsat.her.small.sub$MONTH <- as.numeric(substr(tacsat.her.small.sub$SI_DATE, 4, 5))
-      
-      for(l in 1:12){            ## for each month, dispatch catch to pings
-        if(sum(tacsat.her.small.sub$MONTH == l) > 0){
-          ass <- data.frame(tacsat.her.small.sub$LE_KG_HER[tacsat.her.small.sub$MONTH == l]/1000)
-          sp.her <- SpatialPointsDataFrame(data.frame(tacsat.her.small.sub$SI_LONG[tacsat.her.small.sub$MONTH == l],
-                                                      tacsat.her.small.sub$SI_LATI[tacsat.her.small.sub$MONTH == l]),
-                                                      ass)
-          names(sp.her) <- "landings"
-          ## creates a spatial point data frame for landings associated with each ping
-          her.grid <- raster(ncol = 128, nrow = 112, xmn = -4, xmx = 12, ymn = 48, ymx = 62)
-          ## grids the data at approx. 7.5nm scale 
-          her.raster <- rasterize(sp.her, her.grid, field = "landings", fun= sum)
-          ## sums the point data over the raster
-          
-          plot(europa, ylim=c(48, 62), xlim=c(-4, 12), col="grey70", asp=1.5)
-          box()
-          plot(her.raster, add = T)
-          title(main = paste("Herring, ", month.name[l], " ", years[i], sep=""), sub = "Under 32mm Mesh Gears")
-          writeRaster(her.raster, paste(folder.path, "/results/Herring_", country, "_", month.name[l], "_" ,years[i], "_under32mm ", sep=""), overwrite = TRUE, format = "raster")
-        }
-      }
-    }    
-    
-    ### now we do the same for the gears with cod ends greater than or equal to 32mm
-    if(dim(tacsat.large)[1]>0){  ## if we have some data, dispatch it to pings
-      tacsat.her.large.sub <- splitAmongPings(tacsat.large, temp.eflalo.large, variable="kgs", by=”INTV”)
-      tacsat.her.large.sub$LE_KG_HER[is.na(tacsat.her.large.sub$LE_KG_HER)] <- 0      
-      tacsat.her.large.sub$MONTH <- as.numeric(substr(tacsat.her.large.sub$SI_DATE, 4, 5))
-      
     for(l in 1:12){            ## for each month, dispatch catch to pings
-        if(sum(tacsat.her.large.sub$MONTH == l) > 0){
-            ass <- data.frame(tacsat.her.large.sub$LE_KG_HER[tacsat.her.large.sub$MONTH == l]/1000)
-            sp.her <- SpatialPointsDataFrame(data.frame(tacsat.her.large.sub$SI_LONG[tacsat.her.large.sub$MONTH == l],
-                                                        tacsat.her.large.sub$SI_LATI[tacsat.her.large.sub$MONTH == l]),
-                                                          ass)
-            names(sp.her) <- "landings"
-            ## creates a spatial point data frame for landings associated with each ping
-            her.grid <- raster(ncol = 128, nrow = 112, xmn = -4, xmx = 12, ymn = 48, ymx = 62)
-            ## grids the data at approx. 7.5nm scale 
-            her.raster <- rasterize(sp.her, her.grid, field = "landings", fun= sum)
-            ## sums the point data over the raster
-      
-            plot(europa, ylim=c(48, 62), xlim=c(-4, 12), col="grey70", asp=1.5)
-            box()
-            plot(her.raster, add = T)
-            title(main = paste("Herring, ", month.name[l], " ", years[i], sep=""), sub = "Over 32mm Mesh Gears")
-            writeRaster(her.raster, paste(folder.path, "/results/Herring_", country, "_", month.name[l], "_" ,years[i], "_over32mm ", sep=""), overwrite = TRUE, format = "raster")
-           }
-        }
-     }    
-
-    ##############################
-    
-    temp.eflalo <- eflalo[,colnames(eflalo) %in% c("LE_ID","VE_REF","YR", "VE_FLT", 
-                                                   "VE_COU", "VE_LEN", "VE_KW", "VE_TON", "FT_REF", "FT_DCOU", "FT_DHAR", 
-                                                   "FT_DDAT", "FT_DTIME", "FT_LCOU", "FT_LDAT", "FT_LTIME", "LE_CDAT", "LE_GEAR",
-                                                   "LE_DIV", "LE_RECT",  "LE_MSZ", "LE_KG_SPR", "LE_EURO_SPR")]
-    
-    ### subset again to be just the rows where there is a landing of sprat, using the correct gear code
-    ### within the area we are interested in, using a small mesh gear
-    temp.eflalo.small <- temp.eflalo[temp.eflalo[dim(temp.eflalo)[2]-1]  > 0 & temp.eflalo$LE_GEAR %in% gear.codes & 
-                                       temp.eflalo$LE_DIV %in% study.area &
-                                       temp.eflalo$LE_MSZ <32,]
-    
-    ###  merge these with the tacsat data
-    tacsat.small <-mergeEflalo2Tacsat(temp.eflalo.small, tacsat)
-
-    ### assign activity for the small mesh gears
-    tacsat.small$SI_STATE <- 0
-    tacsat.small$SI_STATE[tacsat.small$SI_SP>=1 & tacsat.small$SI_SP <= 6] <- 1
-    
-    ### ditch VMS data where there isn't a corresponding landing of herring
-    tacsat.small <- tacsat.small[tacsat.small$FT_REF != 0,]
-
-    ### IF there are some landings to dispatch
-    if(dim(tacsat.small)[1]>0){  ## if we have some data, dispatch it to pings
-      tacsat.spr.small.sub <- splitAmongPings(tacsat.small, temp.eflalo.small, variable="kgs", by=”INTV”)
-      tacsat.spr.small.sub$LE_KG_SPR[is.na(tacsat.spr.small.sub$LE_KG_SPR)] <- 0      
-      tacsat.spr.small.sub$MONTH <- as.numeric(substr(tacsat.spr.small.sub$SI_DATE, 4, 5))
-      
-      for(l in 1:12){            ## for each month, dispatch catch to pings
-        if(sum(tacsat.spr.small.sub$MONTH == l) > 0){
-          ass <- data.frame(tacsat.spr.small.sub$LE_KG_SPR[tacsat.spr.small.sub$MONTH == l]/1000)
-          sp.spr <- SpatialPointsDataFrame(data.frame(tacsat.spr.small.sub$SI_LONG[tacsat.spr.small.sub$MONTH == l],
-                                                      tacsat.spr.small.sub$SI_LATI[tacsat.spr.small.sub$MONTH == l]),
-                                           ass)
-          names(sp.spr) <- "landings"
-          ## creates a spatial point data frame for landings associated with each ping
-          spr.grid <- raster(ncol = 128, nrow = 112, xmn = -4, xmx = 12, ymn = 48, ymx = 62)
-          ## grids the data at approx. 7.5nm scale 
-          spr.raster <- rasterize(sp.spr, spr.grid, field = "landings", fun= sum)
-          ## sums the point data over the raster
-          
-          plot(europa, ylim=c(48, 62), xlim=c(-4, 12), col="grey70", asp=1.5)
-          box()
-          plot(spr.raster, add = T)
-          title(main = paste("Sprat, ", month.name[l], " ", years[i], sep=""), sub = "Under 32mm Mesh Gears")
-          writeRaster(spr.raster, paste(folder.path, "/results/Sprat_", country, "_", month.name[l], "_" ,years[i], "_under32mm ", sep=""), overwrite = TRUE, format = "raster")
-        }
+      if(sum(tacsat.her.small.sub$MONTH == l) > 0){
+        ass <- data.frame(tacsat.her.small.sub$LE_KG_HER[tacsat.her.small.sub$MONTH == l]/1000)
+        sp.her <- SpatialPointsDataFrame(data.frame(tacsat.her.small.sub$SI_LONG[tacsat.her.small.sub$MONTH == l],
+                                                    tacsat.her.small.sub$SI_LATI[tacsat.her.small.sub$MONTH == l]),
+                                         ass)
+        names(sp.her) <- "landings"
+        ## creates a spatial point data frame for landings associated with each ping
+        her.grid <- raster(ncol = 128, nrow = 112, xmn = -4, xmx = 12, ymn = 48, ymx = 62)
+        ## grids the data at approx. 7.5nm scale 
+        her.raster <- rasterize(sp.her, her.grid, field = "landings", fun= sum)
+        ## sums the point data over the raster
+        
+        plot(europa, ylim=c(48, 62), xlim=c(-4, 12), col="grey70", asp=1.5)
+        box()
+        plot(her.raster, add = T)
+        title(main = paste("Herring, ", month.name[l], " ", years[i], sep=""), sub = "Under 32mm Mesh Gears")
+        writeRaster(her.raster, paste(folder.path, "/results/Herring_", country, "_", month.name[l], "_" ,years[i], "_under32mm ", sep=""), overwrite = TRUE, format = "raster")
       }
-    }    
+    }
+  }    
+  
+  ### now we do the same for the gears with cod ends greater than or equal to 32mm
+  if(dim(tacsat.large)[1]>0){  ## if we have some data, dispatch it to pings
+    tacsat.her.large.sub <- splitAmongPings(tacsat.large, temp.eflalo.large, variable="kgs")
+    tacsat.her.large.sub$LE_KG_HER[is.na(tacsat.her.large.sub$LE_KG_HER)] <- 0      
+    tacsat.her.large.sub$MONTH <- as.numeric(substr(tacsat.her.large.sub$SI_DATE, 4, 5))
     
-
-    ##############################
-    
-    temp.eflalo <- eflalo[,colnames(eflalo) %in% c("LE_ID","VE_REF","YR", "VE_FLT", 
-                                                   "VE_COU", "VE_LEN", "VE_KW", "VE_TON", "FT_REF", "FT_DCOU", "FT_DHAR", 
-                                                   "FT_DDAT", "FT_DTIME", "FT_LCOU", "FT_LDAT", "FT_LTIME", "LE_CDAT", "LE_GEAR",
-                                                   "LE_DIV", "LE_RECT",  "LE_MSZ", "LE_KG_NOP", "LE_EURO_NOP")]
-    
-    ### subset again to be just the rows where there is a landing of Norway pout, using the correct gear code
-    ### within the area we are interested in, using a small mesh gear
-    temp.eflalo.small <- temp.eflalo[temp.eflalo[dim(temp.eflalo)[2]-1]  > 0 & temp.eflalo$LE_GEAR %in% gear.codes & 
-                                       temp.eflalo$LE_DIV %in% study.area &
-                                       temp.eflalo$LE_MSZ <32,]
-    
-    ###  merge these with the tacsat data
-    tacsat.small <-mergeEflalo2Tacsat(temp.eflalo.small, tacsat)
-    
-    ### assign activity for the small mesh gears
-    tacsat.small$SI_STATE <- 0
-    tacsat.small$SI_STATE[tacsat.small$SI_SP>=1 & tacsat.small$SI_SP <= 6] <- 1
-    
-    ### ditch VMS data where there isn't a corresponding landing of herring
-    tacsat.small <- tacsat.small[tacsat.small$FT_REF != 0,]
-    
-    ### IF there are some landings to dispatch
-    if(dim(tacsat.small)[1]>0){  ## if we have some data, dispatch it to pings
-      tacsat.nop.small.sub <- splitAmongPings(tacsat.small, temp.eflalo.small, variable="kgs", by=”INTV”)
-      tacsat.nop.small.sub$LE_KG_nop[is.na(tacsat.nop.small.sub$LE_KG_NOP)] <- 0      
-      tacsat.nop.small.sub$MONTH <- as.numeric(substr(tacsat.nop.small.sub$SI_DATE, 4, 5))
-      
-      for(l in 1:12){            ## for each month, dispatch catch to pings
-        if(sum(tacsat.nop.small.sub$MONTH == l) > 0){
-          ass <- data.frame(tacsat.nop.small.sub$LE_KG_NOP[tacsat.nop.small.sub$MONTH == l]/1000)
-          sp.nop <- SpatialPointsDataFrame(data.frame(tacsat.nop.small.sub$SI_LONG[tacsat.nop.small.sub$MONTH == l],
-                                                      tacsat.nop.small.sub$SI_LATI[tacsat.nop.small.sub$MONTH == l]),
-                                           ass)
-          names(sp.nop) <- "landings"
-          ## creates a spatial point data frame for landings associated with each ping
-          nop.grid <- raster(ncol = 128, nrow = 112, xmn = -4, xmx = 12, ymn = 48, ymx = 62)
-          ## grids the data at approx. 7.5nm scale 
-          nop.raster <- rasterize(sp.nop, nop.grid, field = "landings", fun= sum)
-          ## sums the point data over the raster
-          
-          plot(europa, ylim=c(48, 62), xlim=c(-4, 12), col="grey70", asp=1.5)
-          box()
-          plot(nop.raster, add = T)
-          title(main = paste("Norway pout, ", month.name[l], " ", years[i], sep=""), sub = "Under 32mm Mesh Gears")
-          writeRaster(nop.raster, paste(folder.path, "/results/Norway_pout_", country, "_", month.name[l], "_" ,years[i], "_under32mm ", sep=""), overwrite = TRUE, format = "raster")
-        }
+    for(l in 1:12){            ## for each month, dispatch catch to pings
+      if(sum(tacsat.her.large.sub$MONTH == l) > 0){
+        ass <- data.frame(tacsat.her.large.sub$LE_KG_HER[tacsat.her.large.sub$MONTH == l]/1000)
+        sp.her <- SpatialPointsDataFrame(data.frame(tacsat.her.large.sub$SI_LONG[tacsat.her.large.sub$MONTH == l],
+                                                    tacsat.her.large.sub$SI_LATI[tacsat.her.large.sub$MONTH == l]),
+                                         ass)
+        names(sp.her) <- "landings"
+        ## creates a spatial point data frame for landings associated with each ping
+        her.grid <- raster(ncol = 128, nrow = 112, xmn = -4, xmx = 12, ymn = 48, ymx = 62)
+        ## grids the data at approx. 7.5nm scale 
+        her.raster <- rasterize(sp.her, her.grid, field = "landings", fun= sum)
+        ## sums the point data over the raster
+        
+        plot(europa, ylim=c(48, 62), xlim=c(-4, 12), col="grey70", asp=1.5)
+        box()
+        plot(her.raster, add = T)
+        title(main = paste("Herring, ", month.name[l], " ", years[i], sep=""), sub = "Over 32mm Mesh Gears")
+        writeRaster(her.raster, paste(folder.path, "/results/Herring_", country, "_", month.name[l], "_" ,years[i], "_over32mm ", sep=""), overwrite = TRUE, format = "raster")
       }
-    }    
+    }
+  }    
+  
+  ##############################
+  
+  temp.eflalo <- eflalo[,colnames(eflalo) %in% c("LE_ID","VE_REF","YR", "VE_FLT", 
+                                                 "VE_COU", "VE_LEN", "VE_KW", "VE_TON", "FT_REF", "FT_DCOU", "FT_DHAR", 
+                                                 "FT_DDAT", "FT_DTIME", "FT_LCOU", "FT_LDAT", "FT_LTIME", "LE_CDAT", "LE_GEAR",
+                                                 "LE_DIV", "LE_RECT",  "LE_MSZ", "LE_KG_SPR", "LE_EURO_SPR")]
+  
+  ### subset again to be just the rows where there is a landing of sprat, using the correct gear code
+  ### within the area we are interested in, using a small mesh gear
+  temp.eflalo.small <- temp.eflalo[temp.eflalo[dim(temp.eflalo)[2]-1]  > 0 & temp.eflalo$LE_GEAR %in% gear.codes & 
+                                     temp.eflalo$LE_DIV %in% study.area &
+                                     temp.eflalo$LE_MSZ <32,]
+  
+  for(k in 1:length(gear.codes)){
+    table.spr[i,k] <- sum(temp.eflalo.small$LE_KG_SPR[temp.eflalo.small$LE_GEAR == gear.codes[k]], na.rm=T)/1000
+      }
+  
+  ###  merge these with the tacsat data
+  tacsat.small <-mergeEflalo2Tacsat(temp.eflalo.small, tacsat)
+  
+  ### assign activity for the small mesh gears
+  tacsat.small$SI_STATE <- 0
+  tacsat.small$SI_STATE[tacsat.small$SI_SP>=1 & tacsat.small$SI_SP <= 5] <- 1
+  
+  ### ditch VMS data where there isn't a corresponding landing of herring
+  tacsat.small <- tacsat.small[tacsat.small$FT_REF != 0,]
+  
+  ### IF there are some landings to dispatch
+  if(dim(tacsat.small)[1]>0){  ## if we have some data, dispatch it to pings
+    tacsat.spr.small.sub <- splitAmongPings(tacsat.small, temp.eflalo.small, variable="kgs")
+    tacsat.spr.small.sub$LE_KG_SPR[is.na(tacsat.spr.small.sub$LE_KG_SPR)] <- 0      
+    tacsat.spr.small.sub$MONTH <- as.numeric(substr(tacsat.spr.small.sub$SI_DATE, 4, 5))
+    
+    for(l in 1:12){            ## for each month, dispatch catch to pings
+      if(sum(tacsat.spr.small.sub$MONTH == l) > 0){
+        ass <- data.frame(tacsat.spr.small.sub$LE_KG_SPR[tacsat.spr.small.sub$MONTH == l]/1000)
+        sp.spr <- SpatialPointsDataFrame(data.frame(tacsat.spr.small.sub$SI_LONG[tacsat.spr.small.sub$MONTH == l],
+                                                    tacsat.spr.small.sub$SI_LATI[tacsat.spr.small.sub$MONTH == l]),
+                                         ass)
+        names(sp.spr) <- "landings"
+        ## creates a spatial point data frame for landings associated with each ping
+        spr.grid <- raster(ncol = 128, nrow = 112, xmn = -4, xmx = 12, ymn = 48, ymx = 62)
+        ## grids the data at approx. 7.5nm scale 
+        spr.raster <- rasterize(sp.spr, spr.grid, field = "landings", fun= sum)
+        ## sums the point data over the raster
+        
+        plot(europa, ylim=c(48, 62), xlim=c(-4, 12), col="grey70", asp=1.5)
+        box()
+        plot(spr.raster, add = T)
+        title(main = paste("Sprat, ", month.name[l], " ", years[i], sep=""), sub = "Under 32mm Mesh Gears")
+        writeRaster(spr.raster, paste(folder.path, "/results/Sprat_", country, "_", month.name[l], "_" ,years[i], "_under32mm ", sep=""), overwrite = TRUE, format = "raster")
+      }
+    }
+  }    
+  
+  
+  ##############################
+  
+  temp.eflalo <- eflalo[,colnames(eflalo) %in% c("LE_ID","VE_REF","YR", "VE_FLT", 
+                                                 "VE_COU", "VE_LEN", "VE_KW", "VE_TON", "FT_REF", "FT_DCOU", "FT_DHAR", 
+                                                 "FT_DDAT", "FT_DTIME", "FT_LCOU", "FT_LDAT", "FT_LTIME", "LE_CDAT", "LE_GEAR",
+                                                 "LE_DIV", "LE_RECT",  "LE_MSZ", "LE_KG_NOP", "LE_EURO_NOP")]
+  
+  ### subset again to be just the rows where there is a landing of Norway pout, using the correct gear code
+  ### within the area we are interested in, using a small mesh gear
+  temp.eflalo.small <- temp.eflalo[temp.eflalo[dim(temp.eflalo)[2]-1]  > 0 & temp.eflalo$LE_GEAR %in% gear.codes & 
+                                     temp.eflalo$LE_DIV %in% study.area &
+                                     temp.eflalo$LE_MSZ <32,]
+
+  for(k in 1:length(gear.codes)){
+    table.nop[i,k] <- sum(temp.eflalo.small$LE_KG_NOP[temp.eflalo.small$LE_GEAR == gear.codes[k]], na.rm=T)/1000
+  }
+  
+    
+  ###  merge these with the tacsat data
+  tacsat.small <-mergeEflalo2Tacsat(temp.eflalo.small, tacsat)
+  
+  ### assign activity for the small mesh gears
+  tacsat.small$SI_STATE <- 0
+  tacsat.small$SI_STATE[tacsat.small$SI_SP>=1 & tacsat.small$SI_SP <= 5] <- 1
+  
+  ### ditch VMS data where there isn't a corresponding landing of herring
+  tacsat.small <- tacsat.small[tacsat.small$FT_REF != 0,]
+  
+  ### IF there are some landings to dispatch
+  if(dim(tacsat.small)[1]>0){  ## if we have some data, dispatch it to pings
+    tacsat.nop.small.sub <- splitAmongPings(tacsat.small, temp.eflalo.small, variable="kgs")
+    tacsat.nop.small.sub$LE_KG_nop[is.na(tacsat.nop.small.sub$LE_KG_NOP)] <- 0      
+    tacsat.nop.small.sub$MONTH <- as.numeric(substr(tacsat.nop.small.sub$SI_DATE, 4, 5))
+    
+    for(l in 1:12){            ## for each month, dispatch catch to pings
+      if(sum(tacsat.nop.small.sub$MONTH == l) > 0){
+        ass <- data.frame(tacsat.nop.small.sub$LE_KG_NOP[tacsat.nop.small.sub$MONTH == l]/1000)
+        sp.nop <- SpatialPointsDataFrame(data.frame(tacsat.nop.small.sub$SI_LONG[tacsat.nop.small.sub$MONTH == l],
+                                                    tacsat.nop.small.sub$SI_LATI[tacsat.nop.small.sub$MONTH == l]),
+                                         ass)
+        names(sp.nop) <- "landings"
+        ## creates a spatial point data frame for landings associated with each ping
+        nop.grid <- raster(ncol = 128, nrow = 112, xmn = -4, xmx = 12, ymn = 48, ymx = 62)
+        ## grids the data at approx. 7.5nm scale 
+        nop.raster <- rasterize(sp.nop, nop.grid, field = "landings", fun= sum)
+        ## sums the point data over the raster
+        
+        plot(europa, ylim=c(48, 62), xlim=c(-4, 12), col="grey70", asp=1.5)
+        box()
+        plot(nop.raster, add = T)
+        title(main = paste("Norway pout, ", month.name[l], " ", years[i], sep=""), sub = "Under 32mm Mesh Gears")
+        writeRaster(nop.raster, paste(folder.path, "/results/Norway_pout_", country, "_", month.name[l], "_" ,years[i], "_under32mm ", sep=""), overwrite = TRUE, format = "raster")
+      }
+    }
+  }    
 }
+
+
+write.csv(table.her.l, paste(folder.path,"results/herring_landings_captured.csv", sep = ""))
+write.csv(table.her.s, paste(folder.path,"results/herring_landings_(small_mesh)_captured.csv", sep = ""))
+write.csv(table.spr, paste(folder.path,"results/sprat_landings_captured.csv", sep = ""))
+write.csv(table.nop, paste(folder.path,"results/nop_landings_captured.csv", sep = ""))
+
+dev.off()
