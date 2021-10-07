@@ -36,7 +36,7 @@ data(europa)  ## load the coastline data from vmstools
 ### Declarations
 country <- "UK" # obviously you will change this
 years <- c(2015, 2016, 2017, 2018, 2019, 2020)  ## using these for now - 2015-20 when we do it for real
-gear.codes <- c("OTM","PTM","PS")
+gear.codes <- c("OTM","PTM","PS") ## these work for UK data
 study.area <- c("27.3.a", "27.4.a", "27.4.b", "27.4.c", "27.7.d")
 mesh.sizes <- c("below_32mm", "32mm_plus")
 
